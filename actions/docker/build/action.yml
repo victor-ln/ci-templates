@@ -1,0 +1,27 @@
+name: "Docker build (gate)"
+description: "Builda a imagem sem push — valida o Dockerfile no PR."
+
+inputs:
+  context:
+    description: "Contexto do build"
+    default: "."
+  dockerfile:
+    description: "Caminho do Dockerfile"
+    default: "Dockerfile"
+  build_args:
+    description: "Build args (DSL multilinha do build-push-action)"
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: false
+        tags: ci-build:latest
+        build-args: ${{ inputs.build_args }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

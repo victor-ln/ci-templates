@@ -1,0 +1,55 @@
+name: Release
+
+# Roda semantic-release no repo CHAMADOR e cria a tag vX.Y.Z.
+# O .releaserc é PADRONIZADO aqui (escrito no workspace antes de rodar) — nenhum app
+# precisa carregar o seu. Use o input `release_branches` para ajustar a branch de release.
+on:
+  workflow_call:
+    inputs:
+      release_branches:
+        description: 'JSON array de branches de release (default: ["main"])'
+        type: string
+        default: '["main"]'
+    secrets:
+      SEMANTIC_RELEASE_TOKEN:
+        description: "PAT de usuário (não GITHUB_TOKEN) para a tag disparar workflows"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Escrever .releaserc padrão (Datawake)
+        env:
+          RELEASE_BRANCHES: ${{ inputs.release_branches }}
+        run: |
+          set -euo pipefail
+          cat > .releaserc.json <<EOF
+          {
+            "branches": ${RELEASE_BRANCHES},
+            "tagFormat": "v\${version}",
+            "plugins": [
+              ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
+              ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
+              "@semantic-release/github"
+            ]
+          }
+          EOF
+      - name: semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+        run: |
+          npm install --no-save \
+            semantic-release \
+            @semantic-release/commit-analyzer \
+            @semantic-release/release-notes-generator \
+            @semantic-release/github \
+            conventional-changelog-conventionalcommits
+          npx semantic-release

@@ -1,0 +1,58 @@
+name: GitOps Bump
+
+# Atualiza o `newTag` do overlay no dtlk-gitops e abre um PR (label ci-bump) com
+# auto-merge. O guard-rail do dtlk-gitops valida e aprova. Edita SOMENTE a linha
+# `newTag:` (sed) para o diff passar no guard-rail.
+on:
+  workflow_call:
+    inputs:
+      project:     { type: string, required: true }
+      app:         { type: string, required: true }
+      env:         { type: string, required: true }   # dev | prod
+      new_tag:     { type: string, required: true }
+      gitops_repo: { type: string, default: "Datawake-tec/dtlk-gitops" }
+    secrets:
+      GITOPS_TOKEN:
+        description: "Fine-grained PAT (bot A): contents:write + pull-requests:write no dtlk-gitops"
+        required: true
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.gitops_repo }}
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops
+      - name: Bump newTag e abrir PR
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          PROJECT: ${{ inputs.project }}
+          APP: ${{ inputs.app }}
+          ENVIRONMENT: ${{ inputs.env }}
+          NEW_TAG: ${{ inputs.new_tag }}
+        run: |
+          set -euo pipefail
+          overlay="projects/${PROJECT}/${APP}/overlays/${ENVIRONMENT}/kustomization.yaml"
+          cd gitops
+          [ -f "$overlay" ] || { echo "::error::Overlay inexistente: $overlay"; exit 1; }
+
+          # Edita exclusivamente a linha `newTag:` (uma por overlay).
+          sed -i -E "s|^([[:space:]]*newTag:[[:space:]]*).*$|\1${NEW_TAG}|" "$overlay"
+          if git diff --quiet -- "$overlay"; then
+            echo "Sem mudança: ${ENVIRONMENT} já está em ${NEW_TAG}."; exit 0
+          fi
+
+          branch="bump/${APP}-${ENVIRONMENT}-${NEW_TAG}"
+          git config user.name "datawake-ci-bot"
+          git config user.email "ci-bot@datawake.cloud"
+          git checkout -b "$branch"
+          git commit -am "chore(${APP}): bump ${ENVIRONMENT} image to ${NEW_TAG}"
+          git push -u origin "$branch" --force
+
+          gh pr create --base main --head "$branch" --label ci-bump \
+            --title "chore(${APP}): bump ${ENVIRONMENT} -> ${NEW_TAG}" \
+            --body "Bump automático de imagem (somente newTag). Validado e auto-aprovado pelo guard-rail." \
+            || echo "PR já existe."
+          gh pr merge "$branch" --auto --squash || echo "auto-merge indisponível/já em fila."

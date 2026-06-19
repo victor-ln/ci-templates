@@ -1,0 +1,47 @@
+name: CI Python
+
+# Gate de PR para repos Python (FastAPI): lint (ruff + bandit) + pytest + docker build (sem push).
+on:
+  workflow_call:
+    inputs:
+      python-version: { type: string,  default: "3.12" }
+      extras:         { type: string,  default: "dev" }        # pip install -e .[<extras>]
+      lint_paths:     { type: string,  default: "app/ tests/" } # alvos do ruff
+      package:        { type: string,  default: "app" }         # bandit -r <package> e --cov=<package>
+      test_path:      { type: string,  default: "tests/" }
+      run_tests:      { type: boolean, default: true }
+      dockerfile:     { type: string,  default: "Dockerfile" }
+      build_args:     { type: string,  default: "" }
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/python/lint@v1
+        with:
+          python-version: ${{ inputs.python-version }}
+          extras: ${{ inputs.extras }}
+          lint_paths: ${{ inputs.lint_paths }}
+          package: ${{ inputs.package }}
+
+  test:
+    if: ${{ inputs.run_tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/python/test@v1
+        with:
+          python-version: ${{ inputs.python-version }}
+          extras: ${{ inputs.extras }}
+          test_path: ${{ inputs.test_path }}
+          package: ${{ inputs.package }}
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/docker/build@v1
+        with:
+          dockerfile: ${{ inputs.dockerfile }}
+          build_args: ${{ inputs.build_args }}

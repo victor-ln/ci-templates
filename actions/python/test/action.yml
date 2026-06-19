@@ -1,0 +1,29 @@
+name: "Python test"
+description: "pytest com cobertura."
+
+inputs:
+  python-version:
+    description: "Versão do Python"
+    default: "3.12"
+  extras:
+    description: "Extras do pip install -e .[<extras>]"
+    default: "dev"
+  test_path:
+    description: "Diretório de testes"
+    default: "tests/"
+  package:
+    description: "Pacote-fonte para cobertura (--cov=<package>)"
+    default: "app"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+    - shell: bash
+      run: pip install -e ".[${{ inputs.extras }}]"
+    - name: pytest
+      shell: bash
+      run: pytest ${{ inputs.test_path }} -v --cov=${{ inputs.package }} --cov-report=term-missing

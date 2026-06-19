@@ -1,0 +1,35 @@
+name: "Python lint"
+description: "ruff check + ruff format --check + bandit."
+
+inputs:
+  python-version:
+    description: "Versão do Python"
+    default: "3.12"
+  extras:
+    description: "Extras do pip install -e .[<extras>]"
+    default: "dev"
+  lint_paths:
+    description: "Caminhos para ruff (check e format --check)"
+    default: "app/ tests/"
+  package:
+    description: "Pacote-fonte para o bandit (-r <package>)"
+    default: "app/"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+    - shell: bash
+      run: pip install -e ".[${{ inputs.extras }}]"
+    - name: ruff check
+      shell: bash
+      run: ruff check ${{ inputs.lint_paths }}
+    - name: ruff format --check
+      shell: bash
+      run: ruff format --check ${{ inputs.lint_paths }}
+    - name: bandit
+      shell: bash
+      run: bandit -r ${{ inputs.package }} -q

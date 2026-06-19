@@ -1,0 +1,43 @@
+name: CI .NET
+
+# Gate de PR para repos .NET: testes (unit + integração) + format + docker build (sem push).
+# Jobs paralelos; cada um faz checkout do repo CHAMADOR e usa as composite actions de actions/dotnet.
+on:
+  workflow_call:
+    inputs:
+      dotnet-version: { type: string,  default: "5.0.x" }
+      solution:       { type: string,  default: "" }       # ex.: Simjob.Framework.sln
+      test_filter:    { type: string,  default: "" }       # ex.: Category=Unit (quando houver [Trait])
+      run_format:     { type: boolean, default: true }     # gate de formatação (dotnet-format)
+      dockerfile:     { type: string,  default: "Dockerfile" }
+      build_args:     { type: string,  default: "" }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/dotnet/test@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          solution: ${{ inputs.solution }}
+          test_filter: ${{ inputs.test_filter }}
+
+  format:
+    if: ${{ inputs.run_format }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/dotnet/format@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+          solution: ${{ inputs.solution }}
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/docker/build@v1
+        with:
+          dockerfile: ${{ inputs.dockerfile }}
+          build_args: ${{ inputs.build_args }}

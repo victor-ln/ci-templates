@@ -1,0 +1,42 @@
+name: CI Node
+
+# Gate de PR para repos Node (vite / next / express): lint + testes + docker build (sem push).
+on:
+  workflow_call:
+    inputs:
+      node-version: { type: string,  default: "20" }
+      prisma:       { type: boolean, default: false }    # npx prisma generate antes de lint/test
+      run_tests:    { type: boolean, default: true }     # false p/ projetos sem suíte (ex.: vite/next)
+      lint_script:  { type: string,  default: "lint" }   # npm run <lint_script>
+      dockerfile:   { type: string,  default: "Dockerfile" }
+      build_args:   { type: string,  default: "" }       # ex.: VITE_API_URL=... / NEXT_PUBLIC_API_URL=...
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/node/lint@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          prisma: ${{ inputs.prisma }}
+          lint_script: ${{ inputs.lint_script }}
+
+  test:
+    if: ${{ inputs.run_tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/node/test@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          prisma: ${{ inputs.prisma }}
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/docker/build@v1
+        with:
+          dockerfile: ${{ inputs.dockerfile }}
+          build_args: ${{ inputs.build_args }}

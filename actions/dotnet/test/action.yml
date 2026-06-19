@@ -1,0 +1,38 @@
+name: ".NET test"
+description: "Restaura, builda (Release) e roda dotnet test (unit + integração) com cobertura."
+
+inputs:
+  dotnet-version:
+    description: "Versão do SDK .NET a instalar"
+    default: "5.0.x"
+  solution:
+    description: "Caminho da solution/projeto (vazio = autodescoberta no diretório)"
+    default: ""
+  test_filter:
+    description: "Expressão opcional para --filter (ex.: Category=Unit)"
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+    - name: Restore
+      shell: bash
+      run: dotnet restore ${{ inputs.solution }}
+    - name: Build (Release)
+      shell: bash
+      run: dotnet build ${{ inputs.solution }} -c Release --no-restore
+    - name: Test (unit + integração)
+      shell: bash
+      env:
+        SOLUTION: ${{ inputs.solution }}
+        FILTER: ${{ inputs.test_filter }}
+      run: |
+        set -euo pipefail
+        args=(test)
+        if [ -n "$SOLUTION" ]; then args+=("$SOLUTION"); fi
+        args+=(-c Release --no-build --collect "XPlat Code Coverage" --logger "trx;LogFileName=test-results.trx")
+        if [ -n "$FILTER" ]; then args+=(--filter "$FILTER"); fi
+        dotnet "${args[@]}"

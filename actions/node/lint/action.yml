@@ -1,0 +1,28 @@
+name: "Node lint"
+description: "npm ci, gera Prisma (opcional) e roda o script de lint."
+
+inputs:
+  node-version:
+    description: "Versão do Node"
+    default: "20"
+  prisma:
+    description: "Rodar `npx prisma generate` antes do lint (true/false)"
+    default: "false"
+  lint_script:
+    description: "Script npm de lint (npm run <lint_script>)"
+    default: "lint"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+    - shell: bash
+      run: npm ci
+    - if: ${{ inputs.prisma == 'true' }}
+      shell: bash
+      run: npx prisma generate
+    - shell: bash
+      run: npm run ${{ inputs.lint_script }}

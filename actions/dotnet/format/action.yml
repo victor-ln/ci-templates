@@ -1,0 +1,31 @@
+name: ".NET format"
+description: "Verifica a formatação do código (dotnet-format --check). Compatível com .NET 5 via tool standalone."
+
+inputs:
+  dotnet-version:
+    description: "Versão do SDK .NET a instalar"
+    default: "5.0.x"
+  solution:
+    description: "Caminho da solution/projeto (vazio = primeira .sln do repo)"
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+    - name: Instalar dotnet-format (compatível com .NET 5)
+      shell: bash
+      run: dotnet tool install -g dotnet-format --version "5.*" || dotnet tool update -g dotnet-format --version "5.*"
+    - name: Format check
+      shell: bash
+      env:
+        SOLUTION: ${{ inputs.solution }}
+      run: |
+        set -euo pipefail
+        export PATH="$PATH:$HOME/.dotnet/tools"
+        ws="$SOLUTION"
+        if [ -z "$ws" ]; then ws="$(ls ./*.sln 2>/dev/null | head -1 || true)"; fi
+        if [ -z "$ws" ]; then echo "::error::Nenhuma .sln encontrada e input solution vazio."; exit 1; fi
+        dotnet-format "$ws" --check

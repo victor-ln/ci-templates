@@ -1,0 +1,20 @@
+name: CI Docker
+
+# Gate de PR genérico (repos docker-only): valida que a imagem builda, sem push.
+on:
+  workflow_call:
+    inputs:
+      context:    { type: string, default: "." }
+      dockerfile: { type: string, default: "Dockerfile" }
+      build_args: { type: string, default: "" }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Datawake-tec/dtlk-ci-templates/actions/docker/build@v1
+        with:
+          context: ${{ inputs.context }}
+          dockerfile: ${{ inputs.dockerfile }}
+          build_args: ${{ inputs.build_args }}
