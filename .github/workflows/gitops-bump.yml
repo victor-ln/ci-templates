@@ -51,8 +51,14 @@ jobs:
           git commit -am "chore(${APP}): bump ${ENVIRONMENT} image to ${NEW_TAG}"
           git push -u origin "$branch" --force
 
-          gh pr create --base main --head "$branch" --label ci-bump \
-            --title "chore(${APP}): bump ${ENVIRONMENT} -> ${NEW_TAG}" \
-            --body "Bump automático de imagem (somente newTag). Validado e auto-aprovado pelo guard-rail." \
-            || echo "PR já existe."
-          gh pr merge "$branch" --auto --squash || echo "auto-merge indisponível/já em fila."
+          gh auth status
+
+          pr_url="$(gh pr list --base main --head "$branch" --state all --json url --jq '.[0].url')"
+          if [ -z "$pr_url" ]; then
+            pr_url="$(gh pr create --base main --head "$branch" --label ci-bump \
+              --title "chore(${APP}): bump ${ENVIRONMENT} -> ${NEW_TAG}" \
+              --body "Bump automático de imagem (somente newTag). Validado e auto-aprovado pelo guard-rail.")"
+          fi
+
+          echo "PR: $pr_url"
+          gh pr merge "$pr_url" --auto --squash
