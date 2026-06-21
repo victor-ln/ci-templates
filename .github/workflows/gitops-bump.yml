@@ -52,6 +52,10 @@ jobs:
           git push -u origin "$branch" --force
 
           gh auth status
+          gh label create ci-bump \
+            --description "PR automático de bump de imagem" \
+            --color 0E8A16 \
+            || true
 
           pr_url="$(gh pr list --base main --head "$branch" --state all --json url --jq '.[0].url')"
           if [ -z "$pr_url" ]; then
